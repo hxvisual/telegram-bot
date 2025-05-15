@@ -1,50 +1,41 @@
-#!/bin/bash
-
-# Telegram Bot Deployment Script
-# This script sets up and deploys the Telegram bot on your server
-
-set -e  # Exit on any error
+set -e 
 
 echo "🤖 Starting Telegram Bot setup and deployment..."
 
-# Check if Python is installed
-if ! command -v python3 &> /dev/null; then
-    echo "❌ Python 3 is not installed. Installing..."
-    sudo apt update
-    sudo apt install -y python3 python3-pip python3-venv
-else
-    echo "✅ Python 3 is installed."
-fi
+sudo apt update && sudo apt upgrade -y
 
-# Check if Git is installed
-if ! command -v git &> /dev/null; then
-    echo "❌ Git is not installed. Installing..."
-    sudo apt update
-    sudo apt install -y git
-else
-    echo "✅ Git is installed."
-fi
+sudo apt install -y python3 python3-pip python3-venv
+echo "✅ Python 3 is installed."
 
-# Create virtual environment
+sudo apt install -y git
+echo "✅ Git is installed."
+
 echo "🔧 Creating Python virtual environment..."
 python3 -m venv venv
 source venv/bin/activate
 
-# Install dependencies
 echo "📦 Installing dependencies..."
 pip install --upgrade pip
 pip install -r requirements.txt
 
-# Create .env file if it doesn't exist
+# Create .env file with user-provided token
 if [ ! -f .env ]; then
-    echo "⚙️ Creating .env file..."
-    echo "BOT_TOKEN=" > .env
-    echo "❗ Please edit the .env file and add your BOT_TOKEN."
+    echo "⚙️ Setting up your bot configuration..."
+    echo -n "📲 Please enter your Telegram BOT_TOKEN (получить у @BotFather): "
+    read -r token
+    
+    if [ -z "$token" ]; then
+        echo "❌ No token provided! You will need to manually edit the .env file later."
+        echo "BOT_TOKEN=" > .env
+    else
+        echo "BOT_TOKEN=$token" > .env
+        echo "✅ Token successfully saved to .env file."
+    fi
 else
     echo "✅ .env file already exists."
+    echo "ℹ️ If you want to update your token, edit the .env file manually."
 fi
 
-# Create systemd service file
 echo "🔧 Creating systemd service file..."
 SERVICE_FILE="/etc/systemd/system/telegram-bot.service"
 
@@ -66,14 +57,10 @@ StandardError=journal
 WantedBy=multi-user.target
 EOL
 
-# Set up systemd service
 echo "🔄 Setting up systemd service..."
 sudo systemctl daemon-reload
 sudo systemctl enable telegram-bot.service
 sudo systemctl start telegram-bot.service
-
-# Create directory for logs if it doesn't exist
-mkdir -p logs
 
 echo "✅ Deployment complete!"
 echo ""

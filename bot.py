@@ -12,8 +12,9 @@ from aiogram.client.default import DefaultBotProperties
 # Load environment variables
 load_dotenv()
 
-# Configure logging
-logger.add("logs/bot_{time}.log", rotation="1 day", compression="zip")
+# Configure logging (console only)
+logger.remove()  # Remove default handler
+logger.add(lambda msg: print(msg, end=""))  # Add stdout handler
 
 # Initialize bot and dispatcher
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -53,14 +54,11 @@ async def cmd_time(message: types.Message):
 @dp.message()
 async def echo_message(message: types.Message):
     """Echo all other messages."""
-    await message.answer(f"Вы написали гнида: {message.text}")
+    await message.answer(f"Вы написали: {message.text}")
 
 async def main():
     """Main function to start the bot."""
     logger.info("Starting bot...")
-    
-    # Create logs directory if it doesn't exist
-    os.makedirs("logs", exist_ok=True)
     
     # Start the bot
     await dp.start_polling(bot, skip_updates=True)
