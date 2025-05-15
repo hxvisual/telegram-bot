@@ -53,7 +53,7 @@ async def cmd_time(message: types.Message):
 @dp.message()
 async def echo_message(message: types.Message):
     """Echo all other messages."""
-    await message.answer(f"Вы написали: {message.text}")
+    await message.answer(f"Вы написали гнида: {message.text}")
 
 async def main():
     """Main function to start the bot."""
