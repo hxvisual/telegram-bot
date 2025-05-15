@@ -1,70 +1,84 @@
-set -e 
+#!/bin/bash
+#
+# ██████╗  ██████╗  ██████╗██╗  ██╗███████╗██████╗     ██████╗  ██████╗ ████████╗
+# ██╔══██╗██╔═══██╗██╔════╝██║ ██╔╝██╔════╝██╔══██╗    ██╔══██╗██╔═══██╗╚══██╔══╝
+# ██║  ██║██║   ██║██║     █████╔╝ █████╗  ██████╔╝    ██████╔╝██║   ██║   ██║   
+# ██║  ██║██║   ██║██║     ██╔═██╗ ██╔══╝  ██╔══██╗    ██╔══██╗██║   ██║   ██║   
+# ██████╔╝╚██████╔╝╚██████╗██║  ██╗███████╗██║  ██║    ██████╔╝╚██████╔╝   ██║   
+# ╚═════╝  ╚═════╝  ╚═════╝╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝    ╚═════╝  ╚═════╝    ╚═╝   
+#
+# Скрипт развертывания Telegram бота в Docker
+# Разработано для автоматизации процесса установки и запуска бота
 
-echo "🤖 Starting Telegram Bot setup and deployment..."
+set -e  # Остановка скрипта при любой ошибке
 
+echo "
+╔════════════════════════════════════════════════════╗
+║  🐳 УСТАНОВКА И ЗАПУСК TELEGRAM БОТА В DOCKER      ║
+╚════════════════════════════════════════════════════╝
+"
+
+echo "🔄 Обновление системных пакетов..."
 sudo apt update && sudo apt upgrade -y
 
-sudo apt install -y python3 python3-pip python3-venv
-echo "✅ Python 3 is installed."
 
-sudo apt install -y git
-echo "✅ Git is installed."
+sudo apt install -y apt-transport-https ca-certificates curl software-properties-common
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+sudo apt update
+sudo apt install -y docker-ce
+sudo systemctl enable docker
+sudo systemctl start docker
+echo "✅ Docker успешно установлен"
 
-echo "🔧 Creating Python virtual environment..."
-python3 -m venv venv
-source venv/bin/activate
+# Установка Docker Compose, если не установлен
 
-echo "📦 Installing dependencies..."
-pip install --upgrade pip
-pip install -r requirements.txt
+sudo curl -L "https://github.com/docker/compose/releases/download/v2.18.1/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+sudo chmod +x /usr/local/bin/docker-compose
+echo "✅ Docker Compose успешно установлен"
 
-# Create .env file with user-provided token
+
+# Добавление текущего пользователя в группу docker
+if ! groups $(whoami) | grep -q '\bdocker\b'; then
+    echo "🔧 Добавление пользователя $(whoami) в группу docker..."
+    sudo usermod -aG docker $(whoami)
+    echo "✅ Пользователь добавлен в группу docker"
+    echo "⚠️ Внимание: Для применения изменений рекомендуется перезайти в систему"
+fi
+
+# Создание файла .env с токеном, указанным пользователем
 if [ ! -f .env ]; then
-    echo "⚙️ Setting up your bot configuration..."
-    echo -n "📲 Please enter your Telegram BOT_TOKEN (получить у @BotFather): "
+    echo "⚙️ Настройка конфигурации бота..."
+    echo -n "📲 Пожалуйста, введите токен вашего бота (получить у @BotFather): "
     read -r token
     
     if [ -z "$token" ]; then
-        echo "❌ No token provided! You will need to manually edit the .env file later."
+        echo "❌ Токен не указан! Вам придется вручную отредактировать файл .env позже."
         echo "BOT_TOKEN=" > .env
     else
         echo "BOT_TOKEN=$token" > .env
-        echo "✅ Token successfully saved to .env file."
+        echo "✅ Токен успешно сохранен в файле .env"
     fi
 else
-    echo "✅ .env file already exists."
-    echo "ℹ️ If you want to update your token, edit the .env file manually."
+    echo "✅ Файл .env уже существует"
+    echo "ℹ️ Если вы хотите обновить токен, отредактируйте файл .env вручную"
 fi
 
-echo "🔧 Creating systemd service file..."
-SERVICE_FILE="/etc/systemd/system/telegram-bot.service"
+# Сборка и запуск Docker-контейнера
+echo "🔧 Сборка Docker-образа..."
+docker-compose build
 
-sudo bash -c "cat > $SERVICE_FILE" << EOL
-[Unit]
-Description=Telegram Bot Service
-After=network.target
+echo "🚀 Запуск контейнера..."
+docker-compose up -d
 
-[Service]
-User=$(whoami)
-WorkingDirectory=$(pwd)
-ExecStart=$(pwd)/venv/bin/python $(pwd)/bot.py
-Restart=always
-RestartSec=10
-StandardOutput=journal
-StandardError=journal
+echo "
+╔════════════════════════════════════════════════════╗
+║  ✅ УСТАНОВКА В DOCKER ЗАВЕРШЕНА УСПЕШНО           ║
+╚════════════════════════════════════════════════════╝
 
-[Install]
-WantedBy=multi-user.target
-EOL
-
-echo "🔄 Setting up systemd service..."
-sudo systemctl daemon-reload
-sudo systemctl enable telegram-bot.service
-sudo systemctl start telegram-bot.service
-
-echo "✅ Deployment complete!"
-echo ""
-echo "🔍 Check status with: sudo systemctl status telegram-bot.service"
-echo "📋 View logs with: sudo journalctl -u telegram-bot.service -f"
-echo ""
-echo "Don't forget to set your BOT_TOKEN in the .env file!" 
+🔍 Проверить статус контейнера:   docker ps -a | grep telegram-bot
+📋 Просмотреть логи:              docker logs -f telegram-bot
+🔄 Перезапустить контейнер:       docker-compose restart
+⏹️ Остановить контейнер:          docker-compose down
+🔄 Обновить и перезапустить:      docker-compose up -d --build
+" 

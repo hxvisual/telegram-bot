@@ -49,7 +49,7 @@ async def cmd_time(message: types.Message):
     """Handle the /time command."""
     current_time = datetime.now().strftime("%H:%M:%S")
     current_date = datetime.now().strftime("%d.%m.%Y")
-    await message.answer(f"⏰ Текущее время: {current_time}\n📅 Дата: {current_date}ты дурак")
+    await message.answer(f"⏰ Текущее время: {current_time}\n📅 Дата: {current_date}")
 
 @dp.message()
 async def echo_message(message: types.Message):

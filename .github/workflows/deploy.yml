@@ -22,7 +22,5 @@ jobs:
         script: |
           cd ${{ secrets.PROJECT_PATH }}
           git pull
-          source venv/bin/activate
-          pip install -r requirements.txt
-          sudo systemctl restart telegram-bot.service
-          echo "Deployment completed at $(date)" 
+          docker-compose up -d --build
+          echo "🐳 Docker deployment completed at $(date)" 
